@@ -26,6 +26,12 @@ brew install konradmichalik/tap/worklog-git
 
 This installs both `worklog-git` and the shorthand `wl`.
 
+To update to the latest version:
+
+```bash
+brew upgrade konradmichalik/tap/worklog-git
+```
+
 ### From source
 
 ```bash
