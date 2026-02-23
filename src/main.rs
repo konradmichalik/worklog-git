@@ -54,20 +54,16 @@ fn main() -> Result<()> {
         .filter_map(|repo| git::collect_project_log(repo, &range, author_ref))
         .collect();
 
-    if cli.interactive {
-        projects.sort_by(|a, b| {
-            let latest = |p: &model::ProjectLog| {
-                p.branches
-                    .iter()
-                    .flat_map(|br| br.commits.first())
-                    .map(|c| c.time)
-                    .max()
-            };
-            latest(b).cmp(&latest(a))
-        });
-    } else {
-        projects.sort_by(|a, b| a.project.to_lowercase().cmp(&b.project.to_lowercase()));
-    }
+    projects.sort_by(|a, b| {
+        let latest = |p: &model::ProjectLog| {
+            p.branches
+                .iter()
+                .flat_map(|br| br.commits.first())
+                .map(|c| c.time)
+                .max()
+        };
+        latest(b).cmp(&latest(a))
+    });
 
     if let Some(sp) = &spinner {
         sp.finish_with_message(format!("\u{2713} {}", output::summary_line(&projects)));
@@ -81,7 +77,7 @@ fn main() -> Result<()> {
         if !projects.is_empty() {
             println!();
         }
-        output::render_terminal(&projects);
+        output::render_terminal(&projects, cli.depth);
     }
 
     Ok(())

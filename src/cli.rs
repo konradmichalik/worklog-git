@@ -1,6 +1,16 @@
 use crate::period::Period;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum Depth {
+    /// Show only project names with summary
+    Projects,
+    /// Show projects and branches
+    Branches,
+    /// Show projects, branches, and commits (default)
+    Commits,
+}
 
 #[derive(Parser, Debug)]
 #[command(
@@ -24,6 +34,10 @@ pub struct Cli {
     /// Interactive drill-down mode (projects > branches > commits)
     #[arg(short, long, conflicts_with = "json")]
     pub interactive: bool,
+
+    /// Output depth: projects, branches, commits
+    #[arg(short, long, default_value = "commits", conflicts_with = "json")]
+    pub depth: Depth,
 
     /// Filter by author name (defaults to git config user.name)
     #[arg(short, long)]
