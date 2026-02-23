@@ -1,6 +1,6 @@
 [package]
 name = "worklog-git"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 description = "Aggregate git commits across repos for standups and time tracking"
 default-run = "worklog-git"
