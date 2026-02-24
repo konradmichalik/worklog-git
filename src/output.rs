@@ -1,18 +1,55 @@
 use colored::Colorize;
 
+use crate::cli::Depth;
 use crate::model::{BranchLog, Commit, ProjectLog};
 
-pub fn render_terminal(projects: &[ProjectLog]) {
+pub fn render_terminal(projects: &[ProjectLog], depth: Depth) {
     if projects.is_empty() {
         eprintln!("{}", "No commits found for the given period.".dimmed());
         return;
     }
 
     for (i, project) in projects.iter().enumerate() {
-        if i > 0 {
+        if i > 0 && depth != Depth::Projects {
             println!();
         }
-        render_project(project);
+        match depth {
+            Depth::Projects => render_project_summary(project),
+            Depth::Branches => render_project_with_branches(project),
+            Depth::Commits => render_project(project),
+        }
+    }
+}
+
+fn render_project_summary(project: &ProjectLog) {
+    let commits = project.total_commits();
+    let branches = project.branches.len();
+    let latest = project.latest_activity().unwrap_or("-");
+    println!(
+        "{} {}  {}",
+        "::".bold().cyan(),
+        project.project.bold().white(),
+        format!("({commits} commits, {branches} branches, {latest})").dimmed(),
+    );
+}
+
+fn render_project_with_branches(project: &ProjectLog) {
+    let latest = project.latest_activity().unwrap_or("-");
+    println!(
+        "{} {}  {}",
+        "::".bold().cyan(),
+        project.project.bold().white(),
+        format!("({latest})").dimmed(),
+    );
+    for branch in &project.branches {
+        let count = branch.commits.len();
+        let branch_latest = branch.latest_activity().unwrap_or("-");
+        println!(
+            "  {} {}  {}",
+            ">>".green(),
+            branch.name.green(),
+            format!("({count} commits, {branch_latest})").dimmed(),
+        );
     }
 }
 

@@ -12,6 +12,7 @@ Scans a directory tree for git repos in parallel, filters commits by author and 
 - **Parallel repo scanning** — uses [rayon](https://github.com/rayon-rs/rayon); skips `node_modules`, `target`, `vendor`, and other build artifacts automatically
 - **Conventional commit highlighting** — color-coded by type in terminal output
 - **Interactive mode** — drill-down navigation through projects, branches, and commits with fuzzy search
+- **Output depth** — show only projects, projects with branches, or full detail with `-d`
 - **JSON output** — machine-readable, suitable for scripting or further processing
 
 > [!NOTE]
@@ -56,6 +57,12 @@ worklog-git -p week --json
 
 # Interactive drill-down mode
 worklog-git -i --path ~/Sites -p 7d
+
+# Compact overview — projects only
+worklog-git -d projects --path ~/Sites -p 7d
+
+# Projects with branches (no individual commits)
+worklog-git -d branches --path ~/Sites -p 7d
 ```
 
 ### Interactive Mode
@@ -73,6 +80,16 @@ Each level shows a summary with commit counts and last activity time. Navigation
 - **Esc** to go back one level (or quit at the top)
 - **Show all** renders the familiar terminal tree output for the current scope
 
+### Output Depth
+
+Use `-d` / `--depth` to control how much detail is shown. Each level includes a summary with last activity time.
+
+| Depth | Output |
+|-------|--------|
+| `projects` | `:: my-app  (6 commits, 2 branches, 2h ago)` |
+| `branches` | Projects + `>> main  (4 commits, 2h ago)` |
+| `commits` | Full tree with all commits (default) |
+
 ### Options
 
 ```
@@ -83,6 +100,7 @@ Options:
       --path <PATH>        Root directory to scan for git repos [default: .]
       --json               Output as JSON instead of colored terminal tree
   -i, --interactive        Interactive drill-down mode (projects > branches > commits)
+  -d, --depth <DEPTH>      Output depth: projects, branches, commits [default: commits]
   -a, --author <AUTHOR>    Filter by author name (defaults to git config user.name)
   -h, --help               Print help
   -V, --version            Print version
