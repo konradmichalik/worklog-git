@@ -1,6 +1,17 @@
-# devcap
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/devcap-cli-logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/images/devcap-cli-logo.svg">
+    <img src="docs/images/devcap-cli-logo.svg" alt="devcap.cli" width="400">
+  </picture>
+</p>
 
-Aggregate git commits across multiple local repositories for daily stand-ups and time tracking.
+<p align="center">
+  Aggregate git commits across multiple local repositories for daily stand-ups and time tracking.
+</p>
+
+> [!TIP]
+> Looking for a native Mac experience? Check out [devcap-app](https://github.com/konradmichalik/devcap-app) — a macOS Menu Bar app built on the same core.
 
 Scans a directory tree for git repos in parallel, filters commits by author and time period, and renders a colorized `Project -> Branch -> Commits` tree — or structured JSON.
 
