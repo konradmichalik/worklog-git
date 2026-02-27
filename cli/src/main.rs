@@ -9,9 +9,9 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Parser;
+use devcap_core::{discovery, git, model, period::Period};
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
-use devcap_core::{discovery, git, model, period::Period};
 
 fn main() -> Result<()> {
     let cli = cli::Cli::parse();

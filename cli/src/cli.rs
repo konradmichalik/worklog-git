@@ -1,5 +1,5 @@
-use devcap_core::period::Period;
 use clap::{Parser, ValueEnum};
+use devcap_core::period::Period;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
