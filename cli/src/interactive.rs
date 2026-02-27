@@ -76,19 +76,19 @@ pub fn run(projects: &[ProjectLog], show_origin: bool) -> Result<()> {
             }
             Selection::Index(idx) => {
                 let project = &projects[idx];
-                browse_project(&theme, project)?;
+                browse_project(&theme, project, show_origin)?;
             }
         }
     }
 }
 
-fn browse_project(theme: &DevcapTheme, project: &ProjectLog) -> Result<()> {
+fn browse_project(theme: &DevcapTheme, project: &ProjectLog, show_origin: bool) -> Result<()> {
     loop {
         match select_branch(theme, project)? {
             Selection::Back => return Ok(()),
             Selection::ShowAll => {
                 println!();
-                output::render_project(project);
+                output::render_project(project, show_origin);
                 println!();
             }
             Selection::Index(idx) => {

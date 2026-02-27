@@ -15,7 +15,7 @@ use std::path::Path;
 use devcap_core::{discovery, git, period::Period};
 
 // Discover all git repos under a directory
-let repos = discovery::find_repos(Path::new("~/Sites"));
+let repos = discovery::find_repos(Path::new("/Users/me/Sites"));
 
 // Parse a time period
 let range = Period::Days(7).to_time_range();

@@ -140,6 +140,7 @@ Each entry in the JSON array follows this shape:
 {
   "project": "my-app",
   "path": "/Users/me/Sites/my-app",
+  "origin": "github",
   "branches": [
     {
       "name": "main",

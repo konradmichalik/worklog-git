@@ -96,8 +96,8 @@ fn render_project_full(project: &ProjectLog, show_origin: bool) {
     }
 }
 
-pub(crate) fn render_project(project: &ProjectLog) {
-    render_project_full(project, false);
+pub(crate) fn render_project(project: &ProjectLog, show_origin: bool) {
+    render_project_full(project, show_origin);
 }
 
 pub(crate) fn render_branch(branch: &BranchLog) {
