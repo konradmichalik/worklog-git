@@ -155,13 +155,13 @@ fn extract_hostname(url: &str) -> Option<&str> {
     }
     // SSH variant: ssh://git@host/...
     if let Some(rest) = url.strip_prefix("ssh://") {
-        let after_at = rest.split('@').last()?;
+        let after_at = rest.split('@').next_back()?;
         return after_at.split('/').next().map(|h| h.split(':').next().unwrap_or(h));
     }
     // HTTPS: https://github.com/user/repo.git
     if url.starts_with("https://") || url.starts_with("http://") {
         let without_scheme = url.split("://").nth(1)?;
-        let after_auth = without_scheme.split('@').last()?;
+        let after_auth = without_scheme.split('@').next_back()?;
         return after_auth.split('/').next();
     }
     None
