@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use chrono::{DateTime, Local};
 use serde::Serialize;
 
@@ -33,7 +35,12 @@ impl BranchLog {
 
 impl ProjectLog {
     pub fn total_commits(&self) -> usize {
-        self.branches.iter().map(|b| b.commits.len()).sum()
+        let mut seen = HashSet::new();
+        self.branches
+            .iter()
+            .flat_map(|b| &b.commits)
+            .filter(|c| seen.insert(&c.hash))
+            .count()
     }
 
     pub fn latest_activity(&self) -> Option<&str> {

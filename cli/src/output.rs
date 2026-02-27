@@ -158,10 +158,14 @@ pub fn summary_line(projects: &[ProjectLog]) -> String {
 mod tests {
     use super::*;
     use chrono::Local;
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
 
     fn make_commit(message: &str, commit_type: Option<&str>) -> Commit {
+        let id = COUNTER.fetch_add(1, Ordering::Relaxed);
         Commit {
-            hash: "abc1234".to_string(),
+            hash: format!("{id:07x}"),
             message: message.to_string(),
             commit_type: commit_type.map(String::from),
             time: Local::now(),
