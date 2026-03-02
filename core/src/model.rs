@@ -4,6 +4,13 @@ use std::fmt;
 use chrono::{DateTime, Local};
 use serde::Serialize;
 
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct DiffStat {
+    pub files_changed: u32,
+    pub insertions: u32,
+    pub deletions: u32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum RepoOrigin {
     #[serde(rename = "github")]
@@ -41,6 +48,8 @@ pub struct Commit {
     pub relative_time: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diff_stat: Option<DiffStat>,
 }
 
 #[derive(Debug, Serialize)]
@@ -49,6 +58,8 @@ pub struct BranchLog {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
     pub commits: Vec<Commit>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diff_stat: Option<DiffStat>,
 }
 
 #[derive(Debug, Serialize)]
@@ -60,6 +71,8 @@ pub struct ProjectLog {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remote_url: Option<String>,
     pub branches: Vec<BranchLog>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diff_stat: Option<DiffStat>,
 }
 
 impl BranchLog {
