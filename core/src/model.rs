@@ -39,11 +39,15 @@ pub struct Commit {
     #[serde(rename = "timestamp")]
     pub time: DateTime<Local>,
     pub relative_time: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct BranchLog {
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
     pub commits: Vec<Commit>,
 }
 

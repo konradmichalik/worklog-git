@@ -88,6 +88,7 @@ mod tests {
             commit_type: commit_type.map(String::from),
             time: Local::now(),
             relative_time: "1h ago".to_string(),
+            url: None,
         }
     }
 
@@ -99,6 +100,7 @@ mod tests {
             remote_url: None,
             branches: vec![BranchLog {
                 name: "main".to_string(),
+                url: None,
                 commits: vec![
                     make_commit("abc1234", "feat: add login", Some("feat")),
                     make_commit("def5678", "fix: resolve crash", Some("fix")),
@@ -175,6 +177,7 @@ mod tests {
             remote_url: None,
             branches: vec![BranchLog {
                 name: "main".to_string(),
+                url: None,
                 commits: vec![make_commit("aaa1111", "update readme", None)],
             }],
         }];

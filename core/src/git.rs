@@ -106,6 +106,7 @@ fn parse_commit_line(line: &str, now: DateTime<Local>) -> Option<Commit> {
         commit_type: detect_commit_type(parts[1]),
         relative_time: format_relative(now, time),
         time,
+        url: None,
     })
 }
 
@@ -238,6 +239,46 @@ pub fn detect_origin(repo: &Path) -> Option<RepoOrigin> {
     Some(classify_host(hostname))
 }
 
+/// Build a browser URL for a branch, respecting platform-specific URL patterns.
+pub fn branch_url(remote_url: &str, origin: Option<&RepoOrigin>, branch: &str) -> String {
+    let encoded = urlencoded(branch);
+    match origin {
+        Some(RepoOrigin::GitLab | RepoOrigin::GitLabSelfHosted) => {
+            format!("{remote_url}/-/tree/{encoded}")
+        }
+        Some(RepoOrigin::Bitbucket) => {
+            format!("{remote_url}/branch/{encoded}")
+        }
+        _ => {
+            // GitHub, Custom, and unknown all use /tree/
+            format!("{remote_url}/tree/{encoded}")
+        }
+    }
+}
+
+/// Build a browser URL for a commit, respecting platform-specific URL patterns.
+pub fn commit_url(remote_url: &str, origin: Option<&RepoOrigin>, hash: &str) -> String {
+    match origin {
+        Some(RepoOrigin::GitLab | RepoOrigin::GitLabSelfHosted) => {
+            format!("{remote_url}/-/commit/{hash}")
+        }
+        Some(RepoOrigin::Bitbucket) => {
+            format!("{remote_url}/commits/{hash}")
+        }
+        _ => {
+            format!("{remote_url}/commit/{hash}")
+        }
+    }
+}
+
+/// Minimal percent-encoding for branch names in URLs (spaces, special chars).
+fn urlencoded(s: &str) -> String {
+    s.replace('%', "%25")
+        .replace(' ', "%20")
+        .replace('#', "%23")
+        .replace('?', "%3F")
+}
+
 pub fn collect_project_log(
     repo: &Path,
     range: &TimeRange,
@@ -245,16 +286,27 @@ pub fn collect_project_log(
 ) -> Option<ProjectLog> {
     let project_name = repo.file_name()?.to_string_lossy().to_string();
     let branches = list_branches(repo).ok()?;
+    let origin = detect_origin(repo);
+    let remote = browser_url(repo);
 
     let mut branch_logs: Vec<BranchLog> = branches
         .into_iter()
         .filter_map(|branch_name| {
-            let commits = log_branch(repo, &branch_name, range, author).ok()?;
+            let mut commits = log_branch(repo, &branch_name, range, author).ok()?;
             if commits.is_empty() {
                 None
             } else {
+                if let Some(base) = &remote {
+                    for c in &mut commits {
+                        c.url = Some(commit_url(base, origin.as_ref(), &c.hash));
+                    }
+                }
+                let b_url = remote
+                    .as_deref()
+                    .map(|base| branch_url(base, origin.as_ref(), &branch_name));
                 Some(BranchLog {
                     name: branch_name,
+                    url: b_url,
                     commits,
                 })
             }
@@ -274,8 +326,8 @@ pub fn collect_project_log(
     Some(ProjectLog {
         project: project_name,
         path: repo.to_string_lossy().to_string(),
-        origin: detect_origin(repo),
-        remote_url: browser_url(repo),
+        origin,
+        remote_url: remote,
         branches: branch_logs,
     })
 }
@@ -473,5 +525,104 @@ mod tests {
             classify_host("codeberg.org"),
             RepoOrigin::Custom("codeberg.org".to_string())
         );
+    }
+
+    #[test]
+    fn branch_url_github() {
+        let url = branch_url(
+            "https://github.com/user/repo",
+            Some(&RepoOrigin::GitHub),
+            "main",
+        );
+        assert_eq!(url, "https://github.com/user/repo/tree/main");
+    }
+
+    #[test]
+    fn branch_url_github_with_slash() {
+        let url = branch_url(
+            "https://github.com/user/repo",
+            Some(&RepoOrigin::GitHub),
+            "feature/auth",
+        );
+        assert_eq!(url, "https://github.com/user/repo/tree/feature/auth");
+    }
+
+    #[test]
+    fn branch_url_gitlab() {
+        let url = branch_url(
+            "https://gitlab.com/group/project",
+            Some(&RepoOrigin::GitLab),
+            "develop",
+        );
+        assert_eq!(url, "https://gitlab.com/group/project/-/tree/develop");
+    }
+
+    #[test]
+    fn branch_url_gitlab_self_hosted() {
+        let url = branch_url(
+            "https://gitlab.company.de/team/repo",
+            Some(&RepoOrigin::GitLabSelfHosted),
+            "main",
+        );
+        assert_eq!(url, "https://gitlab.company.de/team/repo/-/tree/main");
+    }
+
+    #[test]
+    fn branch_url_bitbucket() {
+        let url = branch_url(
+            "https://bitbucket.org/team/repo",
+            Some(&RepoOrigin::Bitbucket),
+            "main",
+        );
+        assert_eq!(url, "https://bitbucket.org/team/repo/branch/main");
+    }
+
+    #[test]
+    fn branch_url_no_origin_defaults_to_tree() {
+        let url = branch_url("https://gitea.local/org/repo", None, "main");
+        assert_eq!(url, "https://gitea.local/org/repo/tree/main");
+    }
+
+    #[test]
+    fn commit_url_github() {
+        let url = commit_url(
+            "https://github.com/user/repo",
+            Some(&RepoOrigin::GitHub),
+            "abc1234",
+        );
+        assert_eq!(url, "https://github.com/user/repo/commit/abc1234");
+    }
+
+    #[test]
+    fn commit_url_gitlab() {
+        let url = commit_url(
+            "https://gitlab.com/group/project",
+            Some(&RepoOrigin::GitLab),
+            "abc1234",
+        );
+        assert_eq!(url, "https://gitlab.com/group/project/-/commit/abc1234");
+    }
+
+    #[test]
+    fn commit_url_bitbucket() {
+        let url = commit_url(
+            "https://bitbucket.org/team/repo",
+            Some(&RepoOrigin::Bitbucket),
+            "abc1234",
+        );
+        assert_eq!(url, "https://bitbucket.org/team/repo/commits/abc1234");
+    }
+
+    #[test]
+    fn commit_url_no_origin_defaults_to_commit() {
+        let url = commit_url("https://gitea.local/org/repo", None, "abc1234");
+        assert_eq!(url, "https://gitea.local/org/repo/commit/abc1234");
+    }
+
+    #[test]
+    fn urlencoded_special_chars() {
+        assert_eq!(urlencoded("feature/auth"), "feature/auth");
+        assert_eq!(urlencoded("my branch"), "my%20branch");
+        assert_eq!(urlencoded("fix#123"), "fix%23123");
     }
 }

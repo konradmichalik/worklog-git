@@ -229,6 +229,7 @@ mod tests {
             commit_type: commit_type.map(String::from),
             time: Local::now(),
             relative_time: "1h ago".to_string(),
+            url: None,
         }
     }
 
@@ -246,6 +247,7 @@ mod tests {
             remote_url: None,
             branches: vec![BranchLog {
                 name: "main".to_string(),
+                url: None,
                 commits: vec![make_commit("test", None)],
             }],
         }];
@@ -262,6 +264,7 @@ mod tests {
                 remote_url: None,
                 branches: vec![BranchLog {
                     name: "main".to_string(),
+                    url: None,
                     commits: vec![make_commit("1", None), make_commit("2", None)],
                 }],
             },
@@ -272,6 +275,7 @@ mod tests {
                 remote_url: None,
                 branches: vec![BranchLog {
                     name: "main".to_string(),
+                    url: None,
                     commits: vec![make_commit("3", None)],
                 }],
             },
