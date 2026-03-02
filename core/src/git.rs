@@ -554,10 +554,7 @@ mod tests {
             Some(&RepoOrigin::GitLab),
             "develop",
         );
-        assert_eq!(
-            url,
-            "https://gitlab.com/group/project/-/tree/develop"
-        );
+        assert_eq!(url, "https://gitlab.com/group/project/-/tree/develop");
     }
 
     #[test]
@@ -567,10 +564,7 @@ mod tests {
             Some(&RepoOrigin::GitLabSelfHosted),
             "main",
         );
-        assert_eq!(
-            url,
-            "https://gitlab.company.de/team/repo/-/tree/main"
-        );
+        assert_eq!(url, "https://gitlab.company.de/team/repo/-/tree/main");
     }
 
     #[test]
@@ -606,10 +600,7 @@ mod tests {
             Some(&RepoOrigin::GitLab),
             "abc1234",
         );
-        assert_eq!(
-            url,
-            "https://gitlab.com/group/project/-/commit/abc1234"
-        );
+        assert_eq!(url, "https://gitlab.com/group/project/-/commit/abc1234");
     }
 
     #[test]
@@ -619,10 +610,7 @@ mod tests {
             Some(&RepoOrigin::Bitbucket),
             "abc1234",
         );
-        assert_eq!(
-            url,
-            "https://bitbucket.org/team/repo/commits/abc1234"
-        );
+        assert_eq!(url, "https://bitbucket.org/team/repo/commits/abc1234");
     }
 
     #[test]
