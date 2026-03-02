@@ -285,6 +285,7 @@ mod tests {
             commit_type: None,
             time: Local::now(),
             relative_time: relative.to_string(),
+            url: None,
         }
     }
 
@@ -314,6 +315,7 @@ mod tests {
             remote_url: None,
             branches: vec![BranchLog {
                 name: "main".to_string(),
+                url: None,
                 commits: vec![make_commit("abc", "msg", "1h ago")],
             }],
         };
@@ -333,6 +335,7 @@ mod tests {
             branches: vec![
                 BranchLog {
                     name: "main".to_string(),
+                    url: None,
                     commits: vec![
                         make_commit("a", "m1", "1h ago"),
                         make_commit("b", "m2", "2h ago"),
@@ -340,6 +343,7 @@ mod tests {
                 },
                 BranchLog {
                     name: "dev".to_string(),
+                    url: None,
                     commits: vec![make_commit("c", "m3", "3h ago")],
                 },
             ],
@@ -359,6 +363,7 @@ mod tests {
             remote_url: None,
             branches: vec![BranchLog {
                 name: "main".to_string(),
+                url: None,
                 commits: vec![make_commit("abc", "msg", "1h ago")],
             }],
         };
@@ -376,6 +381,7 @@ mod tests {
             remote_url: None,
             branches: vec![BranchLog {
                 name: "main".to_string(),
+                url: None,
                 commits: vec![make_commit("abc", "msg", "1h ago")],
             }],
         };
@@ -387,6 +393,7 @@ mod tests {
     fn format_branch_singular() {
         let branch = BranchLog {
             name: "feature/auth".to_string(),
+            url: None,
             commits: vec![make_commit("a", "m", "1h ago")],
         };
         let text = strip_ansi(&format_branch_item(&branch));
@@ -398,6 +405,7 @@ mod tests {
     fn format_branch_plural() {
         let branch = BranchLog {
             name: "main".to_string(),
+            url: None,
             commits: vec![
                 make_commit("a", "m1", "1h ago"),
                 make_commit("b", "m2", "2h ago"),
