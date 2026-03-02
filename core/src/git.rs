@@ -1,10 +1,11 @@
+use std::collections::HashSet;
 use std::path::Path;
 use std::process::Command;
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
 
-use crate::model::{BranchLog, Commit, ProjectLog, RepoOrigin};
+use crate::model::{BranchLog, Commit, DiffStat, ProjectLog, RepoOrigin};
 use crate::period::TimeRange;
 
 pub fn default_author() -> Option<String> {
@@ -51,7 +52,8 @@ fn log_branch(
     branch: &str,
     range: &TimeRange,
     author: Option<&str>,
-) -> Result<Vec<Commit>> {
+    with_stat: bool,
+) -> Result<(Vec<Commit>, Option<DiffStat>, HashSet<String>)> {
     let since_str = range.since.to_rfc3339();
 
     let mut args = vec![
@@ -63,6 +65,10 @@ fn log_branch(
         "--format=%h%x00%s%x00%aI".to_string(),
         "--no-merges".to_string(),
     ];
+
+    if with_stat {
+        args.push("--numstat".to_string());
+    }
 
     if let Some(until) = &range.until {
         args.push(format!("--before={}", until.to_rfc3339()));
@@ -78,16 +84,106 @@ fn log_branch(
         .context("Failed to run git log")?;
 
     if !output.status.success() {
-        return Ok(vec![]);
+        return Ok((vec![], None, HashSet::new()));
     }
 
     let now = Local::now();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let (commits, branch_files) = parse_log_output(&stdout, now, with_stat);
 
-    Ok(String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter(|l| !l.is_empty())
-        .filter_map(|line| parse_commit_line(line, now))
-        .collect())
+    let branch_stat = if with_stat && !commits.is_empty() {
+        let insertions: u32 = commits
+            .iter()
+            .filter_map(|c| c.diff_stat.as_ref())
+            .map(|s| s.insertions)
+            .sum();
+        let deletions: u32 = commits
+            .iter()
+            .filter_map(|c| c.diff_stat.as_ref())
+            .map(|s| s.deletions)
+            .sum();
+        Some(DiffStat {
+            files_changed: branch_files.len() as u32,
+            insertions,
+            deletions,
+        })
+    } else {
+        None
+    };
+
+    Ok((commits, branch_stat, branch_files))
+}
+
+fn parse_log_output(
+    stdout: &str,
+    now: DateTime<Local>,
+    with_stat: bool,
+) -> (Vec<Commit>, HashSet<String>) {
+    let mut commits = Vec::new();
+    let mut branch_files = HashSet::new();
+    let mut current_insertions: u32 = 0;
+    let mut current_deletions: u32 = 0;
+    let mut current_files: u32 = 0;
+
+    for line in stdout.lines() {
+        if line.is_empty() {
+            continue;
+        }
+        if line.contains('\0') {
+            // Finalize previous commit's stat
+            if with_stat {
+                if let Some(prev) = commits.last_mut() {
+                    let prev: &mut Commit = prev;
+                    if current_files > 0 {
+                        prev.diff_stat = Some(DiffStat {
+                            files_changed: current_files,
+                            insertions: current_insertions,
+                            deletions: current_deletions,
+                        });
+                    }
+                }
+            }
+            current_insertions = 0;
+            current_deletions = 0;
+            current_files = 0;
+
+            if let Some(commit) = parse_commit_line(line, now) {
+                commits.push(commit);
+            }
+        } else if with_stat {
+            if let Some((ins, del, path)) = parse_numstat_line(line) {
+                current_insertions += ins;
+                current_deletions += del;
+                current_files += 1;
+                branch_files.insert(path);
+            }
+        }
+    }
+
+    // Finalize last commit
+    if with_stat {
+        if let Some(last) = commits.last_mut() {
+            if current_files > 0 {
+                last.diff_stat = Some(DiffStat {
+                    files_changed: current_files,
+                    insertions: current_insertions,
+                    deletions: current_deletions,
+                });
+            }
+        }
+    }
+
+    (commits, branch_files)
+}
+
+fn parse_numstat_line(line: &str) -> Option<(u32, u32, String)> {
+    let parts: Vec<&str> = line.split('\t').collect();
+    if parts.len() != 3 {
+        return None;
+    }
+    let ins = parts[0].parse::<u32>().unwrap_or(0);
+    let del = parts[1].parse::<u32>().unwrap_or(0);
+    Some((ins, del, parts[2].to_string()))
 }
 
 fn parse_commit_line(line: &str, now: DateTime<Local>) -> Option<Commit> {
@@ -107,6 +203,7 @@ fn parse_commit_line(line: &str, now: DateTime<Local>) -> Option<Commit> {
         relative_time: format_relative(now, time),
         time,
         url: None,
+        diff_stat: None,
     })
 }
 
@@ -283,16 +380,22 @@ pub fn collect_project_log(
     repo: &Path,
     range: &TimeRange,
     author: Option<&str>,
+    with_stat: bool,
 ) -> Option<ProjectLog> {
     let project_name = repo.file_name()?.to_string_lossy().to_string();
     let branches = list_branches(repo).ok()?;
     let origin = detect_origin(repo);
     let remote = browser_url(repo);
 
+    let mut project_files: HashSet<String> = HashSet::new();
+    let mut project_insertions: u32 = 0;
+    let mut project_deletions: u32 = 0;
+
     let mut branch_logs: Vec<BranchLog> = branches
         .into_iter()
         .filter_map(|branch_name| {
-            let mut commits = log_branch(repo, &branch_name, range, author).ok()?;
+            let (mut commits, branch_stat, branch_file_set) =
+                log_branch(repo, &branch_name, range, author, with_stat).ok()?;
             if commits.is_empty() {
                 None
             } else {
@@ -304,10 +407,18 @@ pub fn collect_project_log(
                 let b_url = remote
                     .as_deref()
                     .map(|base| branch_url(base, origin.as_ref(), &branch_name));
+
+                if let Some(stat) = &branch_stat {
+                    project_insertions += stat.insertions;
+                    project_deletions += stat.deletions;
+                    project_files.extend(branch_file_set);
+                }
+
                 Some(BranchLog {
                     name: branch_name,
                     url: b_url,
                     commits,
+                    diff_stat: branch_stat,
                 })
             }
         })
@@ -323,12 +434,23 @@ pub fn collect_project_log(
         b_primary.cmp(&a_primary).then_with(|| a.name.cmp(&b.name))
     });
 
+    let project_stat = if with_stat {
+        Some(DiffStat {
+            files_changed: project_files.len() as u32,
+            insertions: project_insertions,
+            deletions: project_deletions,
+        })
+    } else {
+        None
+    };
+
     Some(ProjectLog {
         project: project_name,
         path: repo.to_string_lossy().to_string(),
         origin,
         remote_url: remote,
         branches: branch_logs,
+        diff_stat: project_stat,
     })
 }
 
@@ -624,5 +746,71 @@ mod tests {
         assert_eq!(urlencoded("feature/auth"), "feature/auth");
         assert_eq!(urlencoded("my branch"), "my%20branch");
         assert_eq!(urlencoded("fix#123"), "fix%23123");
+    }
+
+    #[test]
+    fn parse_numstat_line_normal() {
+        let result = parse_numstat_line("3\t1\tsrc/foo.rs");
+        assert_eq!(result, Some((3, 1, "src/foo.rs".to_string())));
+    }
+
+    #[test]
+    fn parse_numstat_line_binary() {
+        let result = parse_numstat_line("-\t-\timage.png");
+        assert_eq!(result, Some((0, 0, "image.png".to_string())));
+    }
+
+    #[test]
+    fn parse_numstat_line_invalid() {
+        assert!(parse_numstat_line("not a numstat line").is_none());
+        assert!(parse_numstat_line("").is_none());
+    }
+
+    #[test]
+    fn parse_log_output_with_stat() {
+        let now = Local::now();
+        let ts = now.to_rfc3339();
+        let input = format!(
+            "abc1234\x00feat: add feature\x00{ts}\n\
+             3\t1\tsrc/main.rs\n\
+             10\t0\tsrc/lib.rs\n\
+             \n\
+             def5678\x00fix: bug\x00{ts}\n\
+             2\t5\tsrc/main.rs\n"
+        );
+        let (commits, files) = parse_log_output(&input, now, true);
+        assert_eq!(commits.len(), 2);
+
+        let s0 = commits[0]
+            .diff_stat
+            .as_ref()
+            .expect("commit 0 should have diff_stat");
+        assert_eq!(s0.insertions, 13);
+        assert_eq!(s0.deletions, 1);
+        assert_eq!(s0.files_changed, 2);
+
+        let s1 = commits[1]
+            .diff_stat
+            .as_ref()
+            .expect("commit 1 should have diff_stat");
+        assert_eq!(s1.insertions, 2);
+        assert_eq!(s1.deletions, 5);
+        assert_eq!(s1.files_changed, 1);
+
+        // Branch-level dedup: src/main.rs + src/lib.rs = 2 unique files
+        assert_eq!(files.len(), 2);
+        assert!(files.contains("src/main.rs"));
+        assert!(files.contains("src/lib.rs"));
+    }
+
+    #[test]
+    fn parse_log_output_without_stat() {
+        let now = Local::now();
+        let ts = now.to_rfc3339();
+        let input = format!("abc1234\x00feat: add feature\x00{ts}\n");
+        let (commits, files) = parse_log_output(&input, now, false);
+        assert_eq!(commits.len(), 1);
+        assert!(commits[0].diff_stat.is_none());
+        assert!(files.is_empty());
     }
 }
