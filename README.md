@@ -91,6 +91,12 @@ devcap --show-origin --path ~/Sites -p 7d
 
 # Copy output to clipboard for stand-ups
 devcap --copy --path ~/Sites -p yesterday
+
+# Sort by number of commits (most active first)
+devcap --sort commits --path ~/Sites -p 7d
+
+# Sort alphabetically
+devcap --sort name --path ~/Sites -p 7d
 ```
 
 ### Interactive Mode
@@ -140,6 +146,24 @@ devcap --copy -p yesterday --path ~/Sites
 
 The normal terminal output is still printed; the clipboard content is a plain-text version without ANSI colors. A confirmation message (`Copied to clipboard.`) appears on stderr.
 
+### Sorting
+
+Use `--sort` to control the order of projects. The format is `<field>` or `<field>:<direction>`.
+
+| Field | Default direction | Description |
+|-------|-------------------|-------------|
+| `time` | desc | Most recent commit first (default) |
+| `commits` | desc | Most commits first |
+| `name` | asc | Alphabetical by project name |
+| `lines` | desc | Most changed lines first (requires `--stat`) |
+
+```bash
+devcap --sort name                # A → Z
+devcap --sort name:desc           # Z → A
+devcap --sort commits:asc         # least active first
+devcap --sort lines --stat        # most changed lines first
+```
+
 ### Config File
 
 Create `~/.devcap.toml` to set defaults. CLI arguments always take precedence.
@@ -150,9 +174,10 @@ author = "Jane Doe"
 period = "today"
 show_origin = true
 color = true
+sort = "commits"
 ```
 
-All fields are optional. When a field is not set in the config, the built-in default applies (`path = "."`, `period = "today"`, color auto-detected from TTY).
+All fields are optional. When a field is not set in the config, the built-in default applies (`path = "."`, `period = "today"`, `sort = "time"`, color auto-detected from TTY).
 
 ### Options
 
@@ -169,6 +194,8 @@ Options:
   -d, --depth <DEPTH>      Output depth: projects, branches, commits [default: commits]
   -a, --author <AUTHOR>    Filter by author name (defaults to git config user.name)
   -o, --show-origin        Show repository origin (GitHub, GitLab, etc.)
+  -s, --stat               Show diff stats (+insertions -deletions ~files) per commit
+      --sort <SORT>        Sort projects: time, commits, name, lines (append :asc or :desc)
   -h, --help               Print help
   -V, --version            Print version
 ```
