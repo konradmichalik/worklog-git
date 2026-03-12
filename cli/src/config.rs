@@ -11,6 +11,7 @@ pub struct DevcapConfig {
     pub show_origin: Option<bool>,
     pub color: Option<bool>,
     pub stat: Option<bool>,
+    pub sort: Option<String>,
 }
 
 pub fn load() -> DevcapConfig {
@@ -58,6 +59,7 @@ mod tests {
         assert!(cfg.show_origin.is_none());
         assert!(cfg.color.is_none());
         assert!(cfg.stat.is_none());
+        assert!(cfg.sort.is_none());
     }
 
     #[test]
@@ -81,6 +83,7 @@ mod tests {
             show_origin = true
             color = false
             stat = true
+            sort = "commits"
         "#;
         let cfg: DevcapConfig = toml::from_str(toml_str).expect("parse failed");
         assert_eq!(cfg.path, Some(PathBuf::from("/home/user/projects")));
@@ -89,6 +92,7 @@ mod tests {
         assert_eq!(cfg.show_origin, Some(true));
         assert_eq!(cfg.color, Some(false));
         assert_eq!(cfg.stat, Some(true));
+        assert_eq!(cfg.sort.as_deref(), Some("commits"));
     }
 
     #[test]

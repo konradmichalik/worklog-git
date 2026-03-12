@@ -75,15 +75,50 @@ fn main() -> Result<()> {
         .filter_map(|repo| git::collect_project_log(repo, &range, author_ref, with_stat))
         .collect();
 
+    let sort_spec = cli
+        .sort
+        .or_else(|| {
+            cfg.sort
+                .as_deref()
+                .and_then(|s| s.parse::<cli::SortSpec>().ok())
+        })
+        .unwrap_or_default();
+
     projects.sort_by(|a, b| {
-        let latest = |p: &model::ProjectLog| {
-            p.branches
-                .iter()
-                .flat_map(|br| br.commits.first())
-                .map(|c| c.time)
-                .max()
+        let ord = match sort_spec.field {
+            cli::SortField::Time => {
+                let latest = |p: &model::ProjectLog| {
+                    p.branches
+                        .iter()
+                        .flat_map(|br| br.commits.first())
+                        .map(|c| c.time)
+                        .max()
+                };
+                latest(a).cmp(&latest(b))
+            }
+            cli::SortField::Commits => {
+                let count = |p: &model::ProjectLog| {
+                    p.branches.iter().map(|br| br.commits.len()).sum::<usize>()
+                };
+                count(a).cmp(&count(b))
+            }
+            cli::SortField::Name => a.project.to_lowercase().cmp(&b.project.to_lowercase()),
+            cli::SortField::Lines => {
+                let lines = |p: &model::ProjectLog| {
+                    p.branches
+                        .iter()
+                        .flat_map(|br| &br.commits)
+                        .filter_map(|c| c.diff_stat.as_ref())
+                        .map(|s| (s.insertions + s.deletions) as u64)
+                        .sum::<u64>()
+                };
+                lines(a).cmp(&lines(b))
+            }
         };
-        latest(b).cmp(&latest(a))
+        match sort_spec.direction {
+            cli::SortDirection::Asc => ord,
+            cli::SortDirection::Desc => ord.reverse(),
+        }
     });
 
     if let Some(sp) = &spinner {
