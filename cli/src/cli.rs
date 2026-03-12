@@ -56,7 +56,11 @@ impl FromStr for SortSpec {
             "commits" => SortField::Commits,
             "name" => SortField::Name,
             "lines" => SortField::Lines,
-            _ => return Err(format!("unknown sort field: {field_str} (expected: time, commits, name, lines)")),
+            _ => {
+                return Err(format!(
+                    "unknown sort field: {field_str} (expected: time, commits, name, lines)"
+                ))
+            }
         };
 
         let default_dir = match field {
@@ -133,38 +137,38 @@ mod tests {
 
     #[test]
     fn parse_sort_field_only_defaults_direction() {
-        let spec: SortSpec = "time".parse().unwrap();
+        let spec: SortSpec = "time".parse().expect("parse time");
         assert_eq!(spec.field, SortField::Time);
         assert_eq!(spec.direction, SortDirection::Desc);
 
-        let spec: SortSpec = "commits".parse().unwrap();
+        let spec: SortSpec = "commits".parse().expect("parse commits");
         assert_eq!(spec.field, SortField::Commits);
         assert_eq!(spec.direction, SortDirection::Desc);
 
-        let spec: SortSpec = "name".parse().unwrap();
+        let spec: SortSpec = "name".parse().expect("parse name");
         assert_eq!(spec.field, SortField::Name);
         assert_eq!(spec.direction, SortDirection::Asc);
 
-        let spec: SortSpec = "lines".parse().unwrap();
+        let spec: SortSpec = "lines".parse().expect("parse lines");
         assert_eq!(spec.field, SortField::Lines);
         assert_eq!(spec.direction, SortDirection::Desc);
     }
 
     #[test]
     fn parse_sort_with_explicit_direction() {
-        let spec: SortSpec = "time:asc".parse().unwrap();
+        let spec: SortSpec = "time:asc".parse().expect("parse time:asc");
         assert_eq!(spec.field, SortField::Time);
         assert_eq!(spec.direction, SortDirection::Asc);
 
-        let spec: SortSpec = "name:desc".parse().unwrap();
+        let spec: SortSpec = "name:desc".parse().expect("parse name:desc");
         assert_eq!(spec.field, SortField::Name);
         assert_eq!(spec.direction, SortDirection::Desc);
 
-        let spec: SortSpec = "commits:asc".parse().unwrap();
+        let spec: SortSpec = "commits:asc".parse().expect("parse commits:asc");
         assert_eq!(spec.field, SortField::Commits);
         assert_eq!(spec.direction, SortDirection::Asc);
 
-        let spec: SortSpec = "lines:asc".parse().unwrap();
+        let spec: SortSpec = "lines:asc".parse().expect("parse lines:asc");
         assert_eq!(spec.field, SortField::Lines);
         assert_eq!(spec.direction, SortDirection::Asc);
     }
