@@ -12,6 +12,8 @@ pub struct DevcapConfig {
     pub color: Option<bool>,
     pub stat: Option<bool>,
     pub sort: Option<String>,
+    pub since: Option<String>,
+    pub until: Option<String>,
 }
 
 pub fn load() -> DevcapConfig {
@@ -60,6 +62,8 @@ mod tests {
         assert!(cfg.color.is_none());
         assert!(cfg.stat.is_none());
         assert!(cfg.sort.is_none());
+        assert!(cfg.since.is_none());
+        assert!(cfg.until.is_none());
     }
 
     #[test]
@@ -114,6 +118,27 @@ mod tests {
         let home = PathBuf::from("/home/user");
         let result = expand_tilde(PathBuf::from("~"), &home);
         assert_eq!(result, PathBuf::from("/home/user"));
+    }
+
+    #[test]
+    fn parse_config_with_since_until() {
+        let toml_str = r#"
+            since = "2026-03-01"
+            until = "2026-03-10"
+        "#;
+        let cfg: DevcapConfig = toml::from_str(toml_str).expect("parse failed");
+        assert_eq!(cfg.since.as_deref(), Some("2026-03-01"));
+        assert_eq!(cfg.until.as_deref(), Some("2026-03-10"));
+    }
+
+    #[test]
+    fn parse_config_with_since_only() {
+        let toml_str = r#"
+            since = "2026-03-01"
+        "#;
+        let cfg: DevcapConfig = toml::from_str(toml_str).expect("parse failed");
+        assert_eq!(cfg.since.as_deref(), Some("2026-03-01"));
+        assert!(cfg.until.is_none());
     }
 
     #[test]

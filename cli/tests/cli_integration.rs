@@ -39,6 +39,65 @@ fn invalid_period_shows_error() {
 }
 
 #[test]
+fn since_flag_accepted() {
+    let output = cargo_run(&["--since", "2026-03-01", "--path", "/tmp"]);
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn until_flag_accepted() {
+    let output = cargo_run(&["--until", "2030-12-31", "--path", "/tmp"]);
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn since_and_until_together_accepted() {
+    let output = cargo_run(&[
+        "--since",
+        "2026-03-01",
+        "--until",
+        "2026-03-10",
+        "--path",
+        "/tmp",
+    ]);
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn invalid_since_date_shows_error() {
+    let output = cargo_run(&["--since", "not-a-date"]);
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("invalid value"),
+        "Unexpected error: {stderr}"
+    );
+}
+
+#[test]
+fn inverted_date_range_shows_error() {
+    let output = cargo_run(&["--since", "2026-03-10", "--until", "2026-03-01"]);
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("must be on or before"),
+        "Unexpected error: {stderr}"
+    );
+}
+
+#[test]
 fn nonexistent_path_shows_message() {
     let output = cargo_run(&["--path", "/tmp/nonexistent_devcap_test_dir"]);
     let stderr = String::from_utf8_lossy(&output.stderr);
