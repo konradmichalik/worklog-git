@@ -153,22 +153,25 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+fn parse_config_date(value: Option<&str>, field: &str) -> Option<NaiveDate> {
+    let s = value?;
+    match s.parse::<NaiveDate>() {
+        Ok(d) => Some(d),
+        Err(e) => {
+            eprintln!("Warning: invalid {field} in ~/.devcap.toml: \"{s}\" ({e})");
+            None
+        }
+    }
+}
+
 fn resolve_time_range(
     cli_since: Option<NaiveDate>,
     cli_until: Option<NaiveDate>,
     cli_period: Option<Period>,
     cfg: &config::DevcapConfig,
 ) -> Result<TimeRange> {
-    let since = cli_since.or_else(|| {
-        cfg.since
-            .as_deref()
-            .and_then(|s| s.parse::<NaiveDate>().ok())
-    });
-    let until = cli_until.or_else(|| {
-        cfg.until
-            .as_deref()
-            .and_then(|s| s.parse::<NaiveDate>().ok())
-    });
+    let since = cli_since.or_else(|| parse_config_date(cfg.since.as_deref(), "since"));
+    let until = cli_until.or_else(|| parse_config_date(cfg.until.as_deref(), "until"));
 
     let resolve_period = || {
         cli_period
