@@ -20,6 +20,7 @@ Scans a directory tree for git repos in parallel, filters commits by author and 
 ## ✨ Features
 
 - **Flexible time periods** — `today`, `yesterday`, `week`, or arbitrary `Xh` / `Xd` (e.g. `24h`, `3d`, `14d`)
+- **Custom date ranges** — `--since 2026-03-01 --until 2026-03-10` for arbitrary date ranges
 - **Parallel repo scanning** — uses [rayon](https://github.com/rayon-rs/rayon); skips `node_modules`, `target`, `vendor`, and other build artifacts automatically
 - **Conventional commit highlighting** — color-coded by type, auto-detected for TTY
 - **Interactive mode** — drill-down navigation through projects, branches, and commits with fuzzy search
@@ -92,6 +93,15 @@ devcap --show-origin --path ~/Sites -p 7d
 # Copy output to clipboard for stand-ups
 devcap --copy --path ~/Sites -p yesterday
 
+# Commits from March 1st to March 10th
+devcap --since 2026-03-01 --until 2026-03-10
+
+# Everything since March 1st
+devcap --since 2026-03-01 --path ~/Sites
+
+# This week's commits up to March 5th
+devcap -p week --until 2026-03-05
+
 # Sort by number of commits (most active first)
 devcap --sort commits --path ~/Sites -p 7d
 
@@ -146,6 +156,22 @@ devcap --copy -p yesterday --path ~/Sites
 
 The normal terminal output is still printed; the clipboard content is a plain-text version without ANSI colors. A confirmation message (`Copied to clipboard.`) appears on stderr.
 
+### Date Ranges
+
+Use `--since` and `--until` to specify exact date boundaries (format: `YYYY-MM-DD`). Both dates are inclusive.
+
+| Combination | Behavior |
+|-------------|----------|
+| `--since` + `--until` | Exact range, `--period` is ignored |
+| `--since` only | From that date to now |
+| `--until` only | Start from `--period`, end capped at that date |
+
+```bash
+devcap --since 2026-03-01 --until 2026-03-10   # exact range
+devcap --since 2026-03-01                       # open-ended to now
+devcap -p week --until 2026-03-05               # week start, capped end
+```
+
 ### Sorting
 
 Use `--sort` to control the order of projects. The format is `<field>` or `<field>:<direction>`.
@@ -175,6 +201,8 @@ period = "today"
 show_origin = true
 color = true
 sort = "commits"
+since = "2026-03-01"
+until = "2026-03-31"
 ```
 
 All fields are optional. When a field is not set in the config, the built-in default applies (`path = "."`, `period = "today"`, `sort = "time"`, color auto-detected from TTY).
@@ -186,6 +214,8 @@ Usage: devcap [OPTIONS]
 
 Options:
   -p, --period <PERIOD>    Time period: today, yesterday, 24h, 3d, 7d, week [default: today]
+      --since <DATE>       Start date (inclusive, YYYY-MM-DD)
+      --until <DATE>       End date (inclusive, YYYY-MM-DD)
       --path <PATH>        Root directory to scan for git repos [default: .]
       --json               Output as JSON instead of colored terminal tree
       --no-color           Disable colored output (overrides TTY auto-detection)
