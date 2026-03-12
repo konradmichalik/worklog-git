@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use clap::{Parser, ValueEnum};
 use devcap_core::period::Period;
 use std::path::PathBuf;
@@ -89,6 +90,14 @@ pub struct Cli {
     /// Time period: today, yesterday, 24h, 3d, 7d, week
     #[arg(short, long)]
     pub period: Option<Period>,
+
+    /// Start date (inclusive, YYYY-MM-DD). Overrides --period start.
+    #[arg(long, value_name = "DATE")]
+    pub since: Option<NaiveDate>,
+
+    /// End date (inclusive, YYYY-MM-DD). Overrides --period end.
+    #[arg(long, value_name = "DATE")]
+    pub until: Option<NaiveDate>,
 
     /// Root directory to scan for git repos
     #[arg(long)]

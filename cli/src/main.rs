@@ -8,8 +8,12 @@ use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use anyhow::Result;
+use chrono::NaiveDate;
 use clap::Parser;
-use devcap_core::{discovery, git, model, period::Period};
+use devcap_core::{
+    discovery, git, model,
+    period::{Period, TimeRange},
+};
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 
@@ -17,10 +21,8 @@ fn main() -> Result<()> {
     let cli = cli::Cli::parse();
     let cfg = config::load();
 
-    let period = cli
-        .period
-        .or_else(|| cfg.period.as_deref().and_then(|s| s.parse::<Period>().ok()))
-        .unwrap_or(Period::Today);
+    let range = resolve_time_range(cli.since, cli.until, cli.period, &cfg)?;
+
     let path = cli.path.or(cfg.path).unwrap_or_else(|| PathBuf::from("."));
     let author = cli.author.or(cfg.author).or_else(git::default_author);
     let show_origin = cli.show_origin || cfg.show_origin.unwrap_or(false);
@@ -34,8 +36,6 @@ fn main() -> Result<()> {
         std::io::stdout().is_terminal()
     };
     output::set_color_enabled(use_color);
-
-    let range = period.to_time_range();
     let author_ref = author.as_deref();
 
     let spinner = if !cli.json {
@@ -151,4 +151,38 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn resolve_time_range(
+    cli_since: Option<NaiveDate>,
+    cli_until: Option<NaiveDate>,
+    cli_period: Option<Period>,
+    cfg: &config::DevcapConfig,
+) -> Result<TimeRange> {
+    let since = cli_since.or_else(|| {
+        cfg.since
+            .as_deref()
+            .and_then(|s| s.parse::<NaiveDate>().ok())
+    });
+    let until = cli_until.or_else(|| {
+        cfg.until
+            .as_deref()
+            .and_then(|s| s.parse::<NaiveDate>().ok())
+    });
+
+    let resolve_period = || {
+        cli_period
+            .or_else(|| cfg.period.as_deref().and_then(|s| s.parse::<Period>().ok()))
+            .unwrap_or(Period::Today)
+    };
+
+    match (since, until) {
+        (Some(s), Some(u)) => TimeRange::from_dates(s, u).map_err(|e| anyhow::anyhow!(e)),
+        (Some(s), None) => TimeRange::from_since_date(s).map_err(|e| anyhow::anyhow!(e)),
+        (None, Some(u)) => {
+            let range = resolve_period().to_time_range();
+            range.with_until_date(u).map_err(|e| anyhow::anyhow!(e))
+        }
+        (None, None) => Ok(resolve_period().to_time_range()),
+    }
 }
