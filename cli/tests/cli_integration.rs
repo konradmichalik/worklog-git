@@ -92,7 +92,7 @@ fn inverted_date_range_shows_error() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("must be before"),
+        stderr.contains("must be on or before"),
         "Unexpected error: {stderr}"
     );
 }

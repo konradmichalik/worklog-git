@@ -103,9 +103,9 @@ fn start_of_day(date: NaiveDate) -> Result<DateTime<Local>, String> {
 impl TimeRange {
     /// Build a range from two explicit dates (both inclusive).
     pub fn from_dates(since: NaiveDate, until: NaiveDate) -> Result<Self, String> {
-        if since >= until {
+        if since > until {
             return Err(format!(
-                "--since ({since}) must be before --until ({until})"
+                "--since ({since}) must be on or before --until ({until})"
             ));
         }
         Ok(TimeRange {
@@ -229,9 +229,13 @@ mod tests {
     }
 
     #[test]
-    fn from_dates_same_day_errors() {
+    fn from_dates_same_day_is_valid() {
         let date = NaiveDate::from_ymd_opt(2026, 3, 5).expect("valid date");
-        assert!(TimeRange::from_dates(date, date).is_err());
+        let range = TimeRange::from_dates(date, date).expect("same-day range");
+        assert_eq!(range.since.date_naive(), date);
+        let until_dt = range.until.expect("should have until");
+        assert_eq!(until_dt.date_naive(), date);
+        assert!(range.since < until_dt);
     }
 
     #[test]
@@ -239,7 +243,7 @@ mod tests {
         let since = NaiveDate::from_ymd_opt(2026, 3, 10).expect("valid date");
         let until = NaiveDate::from_ymd_opt(2026, 3, 1).expect("valid date");
         let err = TimeRange::from_dates(since, until).unwrap_err();
-        assert!(err.contains("must be before"));
+        assert!(err.contains("must be on or before"));
     }
 
     #[test]
